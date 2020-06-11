@@ -276,7 +276,7 @@ def main(args):
         "Lucas-depth1": lambda: retrieveJSONTasks("data/list_tasks2.json")[:105],
         "Lucas-depth2": lambda: retrieveJSONTasks("data/list_tasks2.json")[:4928],
         "Lucas-depth3": lambda: retrieveJSONTasks("data/list_tasks2.json"),
-        "custom-harder": lambda: retrieveJSONTasks("data/custom_harder_tasks.json"),
+        "custom-harder": lambda: retrieveJSONTasks("data/custom_harder_tasks_joined.json"),
     }[dataset]()
 
     maxTasks = args.pop("maxTasks")
