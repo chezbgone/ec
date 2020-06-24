@@ -3,6 +3,7 @@ from dreamcoder.grammar import Grammar
 from dreamcoder.type import tlist, tint, tbool, arrow, t0, t1, t2
 
 import math
+from collections import defaultdict
 from functools import reduce
 
 
@@ -29,13 +30,22 @@ def _subtraction(x): return lambda y: x - y
 def _multiplication(x): return lambda y: x * y
 
 
+def _int_division(x): return lambda y: x // y
+
+
 def _negate(x): return -x
+
+
+def _abs(x): return abs(x)
 
 
 def _reverse(x): return list(reversed(x))
 
 
 def _append(x): return lambda y: x + y
+
+
+def _append_element(x): return lambda y: x + [y]
 
 
 def _cons(x): return lambda y: [x] + y
@@ -76,6 +86,22 @@ def _fold(l): return lambda x0: lambda f: reduce(
     lambda a, x: f(x)(a), l[::-1], x0)
 
 
+def _fold_joshrule(f): return lambda x0: lambda l: reduce(
+    lambda a, x: f(x)(a), l[::-1], x0)
+
+def _foldi_joshrule(f): return lambda x0: lambda l: reduce(
+        lambda a, x: f(len(l)-1)(x)(a), l[::-1], x0)
+
+
+def _group(f):
+    def __group(l):
+        value_to_group = defaultdict(list)
+        for x in l:
+            value_to_group[f(x)].append(x)
+        return list(value_to_group.values())
+    return __group
+
+
 def _eq(x): return lambda y: x == y
 
 
@@ -92,6 +118,9 @@ def _mod(x): return lambda y: x % y
 
 
 def _not(x): return not x
+
+
+def _lt(x): return lambda y: x < y
 
 
 def _gt(x): return lambda y: x > y
@@ -163,6 +192,8 @@ def _appendmap(f): lambda xs: [y for x in xs for y in f(x)]
 
 def _filter(f): return lambda l: list(filter(f, l))
 
+def _filter1(f): return lambda l: [x for i, x in enumerate(L) if f(i)(x)]
+
 
 def _any(f): return lambda l: any(f(x) for x in l)
 
@@ -233,8 +264,77 @@ primitiveRecursion2 = Primitive("fix2",
                                 _fix2)
 
 
+def _count(f): return lambda L: sum(f(l) for l in L)
+
+
 def _match(l):
     return lambda b: lambda f: b if l == [] else f(l[0])(l[1:])
+
+
+def _cut_idx(i):
+    return lambda L: L[:i] + L[i+1:]
+
+
+def _cut_slice(i): return lambda j: lambda L: L[:i] + L[j+1:]
+
+
+def _cut_val(x): return lambda L: _cut_idx(L.index(x))
+
+
+def _cut_vals(x): return lambda L: [l for l in L if l != x]
+
+
+def _drop(n): return lambda L: L[n:]
+
+def _droplast(n): return lambda L: L[:-n]
+
+
+def _findallindices(f): return lambda L: [i for i, x in enumerate(L) if f(x)]
+
+
+def _insert(x):
+    def __insert(i):
+        def ___insert(l):
+            l.insert(i, x)
+            return l
+        return ___insert
+    return __insert
+
+
+def _is_even(n): return n % 2 == 0
+def _is_odd(n): return n % 2 == 1
+
+def _is_in(x): return lambda l: x in l
+
+
+def _range_josh(start): return lambda end: lambda step: list(range(start, stop, step))
+
+
+def _splice(l): return lambda i: lambda m: m[:i] + l + m[i:]
+
+def _swap(i):
+    def __swap(j):
+        def ___swap(l):
+            l[i], l[j] = l[j], l[i]
+            return l
+        return ___swap
+    return __swap
+
+
+
+def _take(n): return lambda l: l[:n]
+
+def _takelast(n): return lambda l: l[:-n]
+
+
+def _repeat(x): return lambda n: [x]*n
+
+
+def _unique(l): return [x for i, x in enumerate(l) if l.index(x) == i]
+
+
+def _zip(l): return lambda m: [[p] for p in zip(l, m)]
+
 
 
 def primitives():
@@ -394,6 +494,77 @@ def McCarthyPrimitives():
         Primitive("+", arrow(tint, tint, tint), _addition),
         Primitive("-", arrow(tint, tint, tint), _subtraction),
     ] + [Primitive(str(j), tint, j) for j in range(2)]
+
+def joshrule_dsl():
+    """
+    https://github.com/joshrule/list-routines-human-experiments/blob/master/dsl.md
+    """
+    _ = None
+    return [Primitive(str(n), tint, n) for n in range(100)] + \
+        [
+            Primitive('empty', tlist(t0), []),
+            Primitive("true", tbool, True),
+            Primitive("false", tbool, False),
+            Primitive("mod", arrow(tint, tint, tint), _mod),
+            Primitive("*", arrow(tint, tint, tint), _multiplication),
+            Primitive("+", arrow(tint, tint, tint), _addition),
+            Primitive("-", arrow(tint, tint, tint), _subtraction),
+            Primitive("/", arrow(tint, tint, tint), _int_division),
+            Primitive("lt?", arrow(tint, tint, tbool), _lt),
+            Primitive("eq?", arrow(tint, tint, tbool), _eq),
+            Primitive("gt?", arrow(tint, tint, tbool), _gt),
+            Primitive("abs", arrow(tint, tint), _abs),
+            Primitive("and", arrow(tbool, tbool, tbool), _and),
+            Primitive("append", arrow(tlist(t0), t0, tlist(t0)), _append_element),
+            Primitive("concat", arrow(tlist(t0), tlist(t0), tlist(t0)), _append),
+            Primitive("cons", arrow(t0, tlist(t0), tlist(t0)), _cons),
+            Primitive("count", arrow(arrow(t0, tbool), tlist(t0), tint), _count),
+            Primitive("cut_idx", arrow(tint, tlist(t0), tlist(t0)), _cut_idx),
+            Primitive("cut_slice", arrow(tint, tint, tlist(t0), tlist(t0)), _cut_slice),
+            Primitive("cut_val", arrow(tint, tlist(t0), tlist(t0)), _cut_val),
+            Primitive("cut_vals", arrow(tint, tlist(t0), tlist(t0)), _cut_vals),
+            Primitive("drop", arrow(tint, tlist(t0), tlist(t0)), _drop),
+            Primitive("droplast", arrow(tint, tlist(t0), tlist(t0)), _droplast),
+            Primitive("filter", arrow(arrow(t0, tbool), tlist(t0), tlist(t0)), _filter),
+            Primitive("filter1", arrow(arrow(int, t0, tbool), tlist(t0), tlist(t0)), _filter1),
+            Primitive("find", arrow(arrow(int, t0, tbool), tlist(t0), tlist(t0)), _findallindices),
+            Primitive("flatten", arrow(tlist(tlist(t0)), tlist(t0)), _flatten),
+            Primitive("fold", arrow(arrow(t0, t1, t1), t1, tlist(t0), t1), _fold_joshrule),
+            Primitive("foldi", arrow(arrow(tint, t0, t1, t1), t1, tlist(t0), t1), _foldi_joshrule),
+            Primitive("group", arrow(arrow(t0, t1), tlist(t0), tlist(tlist(t0))), _group),
+            Primitive("first", arrow(tlist(t0), t0), _index(0)),
+            Primitive("if", arrow(tbool, t0, t0, t0), _if),
+            Primitive("insert", arrow(t0, tint, tlist(t0), tlist(t0)), _insert),
+            Primitive("is_even", arrow(tint, tbool), _is_even),
+            Primitive("is_in", arrow(t0, tlist(t0), tbool), _is_in),
+            Primitive("is_even", arrow(tint, tbool), _is_odd),
+            Primitive("last", arrow(tlist(t0), t0), _index(-1)),
+            Primitive("length", arrow(tlist(t0), tint), len),
+            Primitive("map", arrow(arrow(t0, t1), tlist(t0), tlist(t1)), _map),
+            Primitive("mapi", arrow(arrow(tint, t0, t1), tlist(t0), tlist(t1)), _mapi),
+            Primitive("max", arrow(tlist(tint), tint), max),
+            Primitive("min", arrow(tlist(tint), tint), min),
+            Primitive("not", arrow(tbool, tbool), _not),
+            Primitive("nth", arrow(tint, tlist(t0), t0), _index),
+            Primitive("or", arrow(tbool, tbool, tbool), _or),
+            Primitive("product", arrow(tlist(tint), tint), math.prod),
+            Primitive("range", arrow(tint, tint, tint, tlist(tint)), _range_josh),
+            Primitive("repeat", arrow(t0, tint, tlist(t0)), _repeat),
+            Primitive("reverse", arrow(tlist(t0), tlist(t0)), _reverse),
+            Primitive("second", arrow(tlist(t0), t0), _index(1)),
+            Primitive("singleton", arrow(t0, tlist(t0)), _single),
+            Primitive("slice", arrow(tint, tint, tlist(t0), tlist(t0)), _slice),
+            Primitive("sort", arrow(tlist(tint), tlist(tint)), sorted),
+            Primitive("splice", arrow(tlist(t0), tint, tlist(t0), tlist(t0)), _splice),
+            Primitive("sum", arrow(tlist(tint), tint), sum),
+            Primitive("swap", arrow(tint, tint, tlist(t0), tlist(t0)), _swap),
+            Primitive("take", arrow(tint, tlist(t0), t0), _take),
+            Primitive("takelast", arrow(tint, tlist(t0), t0), _takelast),
+            Primitive("third", arrow(tlist(t0), t0), _index(2)),
+            Primitive("unique", arrow(tlist(tint), tlist(tint)), _unique),
+            Primitive("zip", arrow(tlist(tint), tlist(tint), tlist(tlist(tint))), _zip),
+        ]
+    
 
 
 if __name__ == "__main__":

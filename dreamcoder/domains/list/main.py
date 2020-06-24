@@ -10,7 +10,7 @@ from dreamcoder.utilities import eprint, flatten, testTrainSplit
 from dreamcoder.grammar import Grammar
 from dreamcoder.task import Task
 from dreamcoder.type import Context, arrow, tbool, tlist, tint, t0, UnificationFailure
-from dreamcoder.domains.list.listPrimitives import basePrimitives, primitives, McCarthyPrimitives, bootstrapTarget_extra, no_length
+from dreamcoder.domains.list.listPrimitives import basePrimitives, primitives, McCarthyPrimitives, bootstrapTarget_extra, no_length, joshrule_dsl
 from dreamcoder.recognition import RecurrentFeatureExtractor
 from dreamcoder.domains.list.makeListTasks import make_list_bootstrap_tasks, sortBootstrap, EASYLISTTASKS
 
@@ -248,7 +248,7 @@ def list_options(parser):
     parser.add_argument("--primitives",
                         default="common",
                         help="Which primitive set to use",
-                        choices=["McCarthy", "base", "rich", "common", "noLength"])
+                        choices=["McCarthy", "base", "rich", "common", "noLength", "joshrule"])
     parser.add_argument("--extractor", type=str,
                         choices=["hand", "deep", "learned"],
                         default="learned")
@@ -351,7 +351,8 @@ def main(args):
              "McCarthy": McCarthyPrimitives,
              "common": bootstrapTarget_extra,
              "noLength": no_length,
-             "rich": primitives}[args.pop("primitives")]()
+             "rich": primitives,
+             "joshrule": joshrule_dsl}[args.pop("primitives")]()
     haveLength = not args.pop("noLength")
     haveMap = not args.pop("noMap")
     haveUnfold = not args.pop("noUnfold")
