@@ -4,6 +4,7 @@ from dreamcoder.type import tlist, tint, tbool, arrow, t0, t1, t2
 
 import math
 from collections import defaultdict
+from operator import mul
 from functools import reduce
 
 
@@ -34,9 +35,6 @@ def _int_division(x): return lambda y: x // y
 
 
 def _negate(x): return -x
-
-
-def _abs(x): return abs(x)
 
 
 def _reverse(x): return list(reversed(x))
@@ -86,10 +84,7 @@ def _fold(l): return lambda x0: lambda f: reduce(
     lambda a, x: f(x)(a), l[::-1], x0)
 
 
-def _fold_joshrule(f): return lambda x0: lambda l: reduce(
-    lambda a, x: f(x)(a), l[::-1], x0)
-
-def _foldi_joshrule(f): return lambda x0: lambda l: reduce(
+def _foldi(l): return lambda x0: lambda f: reduce(
         lambda a, x: f(len(l)-1)(x)(a), l[::-1], x0)
 
 
@@ -192,7 +187,7 @@ def _appendmap(f): lambda xs: [y for x in xs for y in f(x)]
 
 def _filter(f): return lambda l: list(filter(f, l))
 
-def _filter1(f): return lambda l: [x for i, x in enumerate(l) if f(i)(x)]
+def _filteri(f): return lambda l: [x for i, x in enumerate(l) if f(i)(x)]
 
 
 def _any(f): return lambda l: any(f(x) for x in l)
@@ -210,7 +205,7 @@ def _find(x):
     return _inner
 
 
-def _unfold(x): return lambda p: lambda h: lambda n: __unfold(p, f, n, x)
+def _unfold(x): return lambda p: lambda f: lambda n: __unfold(p, f, n, x)
 
 
 def __unfold(p, f, n, x, recursion_limit=50):
@@ -306,8 +301,10 @@ def _is_odd(n): return n % 2 == 1
 
 def _is_in(x): return lambda l: x in l
 
+def _prod(l): return reduce(mul, l, 1)
 
-def _range_josh(start): return lambda end: lambda step: list(range(start, stop, step))
+
+def _rangestep(start): return lambda end: lambda step: list(range(start, end, step))
 
 
 def _splice(l): return lambda i: lambda m: m[:i] + l + m[i:]
@@ -327,7 +324,7 @@ def _take(n): return lambda l: l[:n]
 def _takelast(n): return lambda l: l[:-n]
 
 
-def _repeat(x): return lambda n: [x]*n
+def _repeat_list(x): return lambda n: [x]*n
 
 
 def _unique(l): return [x for i, x in enumerate(l) if l.index(x) == i]
@@ -498,11 +495,17 @@ def McCarthyPrimitives():
 def joshrule_dsl():
     """
     https://github.com/joshrule/list-routines-human-experiments/blob/master/dsl.md
+    differences:
+        - append renamed to append_elt
+        - fold has agrument order modified
+        - foldi has agrument order modified to be consistent with fold
+        - range renamed to rangestep to avoid conflicting name
+
     """
     _ = None
     return [Primitive(str(n), tint, n) for n in range(100)] + \
         [
-            Primitive('empty', tlist(t0), []),
+            Primitive("empty", tlist(t0), []),
             Primitive("true", tbool, True),
             Primitive("false", tbool, False),
             Primitive("mod", arrow(tint, tint, tint), _mod),
@@ -513,10 +516,10 @@ def joshrule_dsl():
             Primitive("lt?", arrow(tint, tint, tbool), _lt),
             Primitive("eq?", arrow(tint, tint, tbool), _eq),
             Primitive("gt?", arrow(tint, tint, tbool), _gt),
-            Primitive("abs", arrow(tint, tint), _abs),
+            Primitive("abs", arrow(tint, tint), abs),
             Primitive("and", arrow(tbool, tbool, tbool), _and),
-            Primitive("append", arrow(tlist(t0), t0, tlist(t0)), _append_element),
-            Primitive("concat", arrow(tlist(t0), tlist(t0), tlist(t0)), _append),
+            Primitive("append_elt", arrow(tlist(t0), t0, tlist(t0)), _append_element), # originally `append`
+            Primitive("append", arrow(tlist(t0), tlist(t0), tlist(t0)), _append), # originally `concat`
             Primitive("cons", arrow(t0, tlist(t0), tlist(t0)), _cons),
             Primitive("count", arrow(arrow(t0, tbool), tlist(t0), tint), _count),
             Primitive("cut_idx", arrow(tint, tlist(t0), tlist(t0)), _cut_idx),
@@ -526,11 +529,11 @@ def joshrule_dsl():
             Primitive("drop", arrow(tint, tlist(t0), tlist(t0)), _drop),
             Primitive("droplast", arrow(tint, tlist(t0), tlist(t0)), _droplast),
             Primitive("filter", arrow(arrow(t0, tbool), tlist(t0), tlist(t0)), _filter),
-            Primitive("filter1", arrow(arrow(tint, t0, tbool), tlist(t0), tlist(t0)), _filter1),
-            Primitive("find", arrow(arrow(tint, t0, tbool), tlist(t0), tlist(t0)), _findallindices),
+            Primitive("filteri", arrow(arrow(tint, t0, tbool), tlist(t0), tlist(t0)), _filteri),
+            Primitive("find", arrow(arrow(tint, t0, tbool), tlist(t0), tlist(tint)), _findallindices),
             Primitive("flatten", arrow(tlist(tlist(t0)), tlist(t0)), _flatten),
-            Primitive("fold", arrow(arrow(t0, t1, t1), t1, tlist(t0), t1), _fold_joshrule),
-            Primitive("foldi", arrow(arrow(tint, t0, t1, t1), t1, tlist(t0), t1), _foldi_joshrule),
+            Primitive("fold", arrow(tlist(t0), t1, arrow(t0, t1, t1), t1), _fold),
+            Primitive("foldi", arrow(tlist(t0), t1, arrow(tint, t0, t1, t1), t1), _foldi),
             Primitive("group", arrow(arrow(t0, t1), tlist(t0), tlist(tlist(t0))), _group),
             Primitive("first", arrow(tlist(t0), t0), _index(0)),
             Primitive("if", arrow(tbool, t0, t0, t0), _if),
@@ -547,9 +550,9 @@ def joshrule_dsl():
             Primitive("not", arrow(tbool, tbool), _not),
             Primitive("nth", arrow(tint, tlist(t0), t0), _index),
             Primitive("or", arrow(tbool, tbool, tbool), _or),
-            Primitive("product", arrow(tlist(tint), tint), math.prod),
-            Primitive("range", arrow(tint, tint, tint, tlist(tint)), _range_josh),
-            Primitive("repeat", arrow(t0, tint, tlist(t0)), _repeat),
+            Primitive("product", arrow(tlist(tint), tint), _prod),
+            Primitive("rangestep", arrow(tint, tint, tint, tlist(tint)), _rangestep),
+            Primitive("repeat", arrow(t0, tint, tlist(t0)), _repeat_list),
             Primitive("reverse", arrow(tlist(t0), tlist(t0)), _reverse),
             Primitive("second", arrow(tlist(t0), t0), _index(1)),
             Primitive("singleton", arrow(t0, tlist(t0)), _single),

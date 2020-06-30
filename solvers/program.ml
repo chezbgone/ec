@@ -385,7 +385,9 @@ let primitive_decrement = primitive "decr" (tint @> tint) (fun x -> x - 1);;
 let primitive_subtraction = primitive "-" (tint @> tint @> tint) (-);;
 let primitive_negation = primitive "negate" (tint @> tint) (fun x -> 0-x);;
 let primitive_multiplication = primitive "*" (tint @> tint @> tint) ( * );;
+let primitive_integer_division = primitive "/" (tint @> tint @> tint) (fun x y -> x / y);;
 let primitive_modulus = primitive "mod" (tint @> tint @> tint) (fun x y -> x mod y);;
+let primitive_abs = primitive "abs" (tint @> tint) abs;;
 
 let primitive_apply = primitive "apply" (t1 @> (t1 @> t0) @> t0) (fun x f -> f x);;
 
@@ -460,6 +462,7 @@ let primitive_range = primitive "range" (tint @> tlist tint) (fun x -> 0 -- (x-1
 let primitive_sort = primitive "sort" (tlist tint @> tlist tint) (List.sort ~compare:(fun x y -> x - y));;
 let primitive_reverse = primitive "reverse" (tlist tint @> tlist tint) (List.rev);;
 let primitive_append = primitive "append"  (tlist t0 @> tlist t0 @> tlist t0) (@);;
+let primitive_append_element = primitive "append_elt"  (tlist t0 @> t0 @> tlist t0) (fun l x -> l @ [x]);;
 let primitive_singleton = primitive "singleton"  (tint @> tlist tint) (fun x -> [x]);;
 let primitive_slice = primitive "slice" (tint @> tint @> tlist tint @> tlist tint) slice;;
 let primitive_length = primitive "length" (tlist t0 @> tint) (List.length);;
@@ -469,14 +472,94 @@ let primitive_mapi = primitive "mapi" ((tint @> t0 @> t1) @> (tlist t0) @> (tlis
     List.mapi l ~f:f);;
 let primitive_a2 = primitive "++" ((tlist t0) @> (tlist t0) @> (tlist t0)) (@);;
 let primitive_reducei = primitive "reducei" ((tint @> t1 @> t0 @> t1) @> t1 @> (tlist t0) @> t1) (fun f x0 l -> List.foldi ~f:f ~init:x0 l);;
-let primitive_filter = primitive "filter" ((tint @> tboolean) @> (tlist tint) @> (tlist tint)) (fun f l -> List.filter ~f:f l);;
+let primitive_filter = primitive "filter" ((t0 @> tboolean) @> (tlist t0) @> (tlist t0)) (fun f l -> List.filter ~f:f l);;
+let primitive_filteri = primitive "filteri" ((tint @> t0 @> tboolean) @> (tlist t0) @> (tlist t0)) (fun f l ->
+    let g ix = match ix with (i, x) -> f i x
+    in let pair i x = (i, x)
+    in filter g (mapi pair l));;
 let primitive_equal = primitive "eq?" (tint @> tint @> tboolean) (fun (a : int) (b : int) -> a = b);;
 let primitive_equal0 = primitive "eq0" (tint @> tboolean) (fun (a : int) -> a = 0);;
 let primitive_not = primitive "not" (tboolean @> tboolean) (not);;
 let primitive_and = primitive "and" (tboolean @> tboolean @> tboolean) (fun x y -> x && y);;
 let primitive_nand = primitive "nand" (tboolean @> tboolean @> tboolean) (fun x y -> not (x && y));;
 let primitive_or = primitive "or" (tboolean @> tboolean @> tboolean) (fun x y -> x || y);;
+let primitive_greater_than = primitive "lt?" (tint @> tint @> tboolean) (fun (x: int) (y: int) -> x < y);;
 let primitive_greater_than = primitive "gt?" (tint @> tint @> tboolean) (fun (x: int) (y: int) -> x > y);;
+
+let primitive_count = primitive "count" ((t0 @> tboolean) @> (tlist t0) @> tint) (fun f l -> List.length (List.filter f l));;
+let primitive_cut_index = primitive "cut_idx" (tint @> (tlist t0) @> (tlist t0)) (fun i l ->
+    let rec remove_at k = function
+        | [] -> []
+        | h :: t -> if k = 0 then t else h :: remove_at (k-1) t
+    in remove_at i l);;
+let primitive_cut_slive = primitive "cut_slice" (tint @> tint @> (tlist t0) @> (tlist t0)) (fun i j l ->
+    let rec take n = function
+        | [] -> []
+        | h :: t -> if n = 0 then [] else h :: take (n-1) t
+    in let rec drop n = function
+        | [] -> []
+        | h :: t as ll -> if n = 0 then ll else drop (n-1) t
+    in take i l :: drop (List.length l - j) l);;
+let primitive_cut_value = primitive "cut_val" (tint @> (tlist t0) @> (tlist t0)) (fun n l ->
+    let rec remove_at k = function
+        | [] -> []
+        | h :: t -> if k = 0 then t else h :: remove_at (k-1) t
+    in remove_at (List.find (fun x -> x = n) l) l);;
+let primitive_cut_value = primitive "cut_vals" (tint @> (tlist t0) @> (tlist t0)) (fun n l ->
+    filter (fun x -> x != n) l);;
+let primitive_drop = primitive "drop" (tint @> (tlist t0) @> (tlist t0)) (fun n l ->
+    let rec drop n = function
+        | [] -> []
+        | h :: t as ll -> if n = 0 then ll else drop (n-1) t
+    in drop n l);;
+let primitive_drop_last = primitive "droplast" (tint @> (tlist t0) @> (tlist t0)) (fun n l ->
+    let rec take k = function
+        | [] -> []
+        | h :: t -> if k = 0 then [] else h :: take (k-1) t
+    in take (List.length l - n) l);;
+let primitive_find = primitive "find" ((tint @> t0 @> tboolean) @> (tlist t0) @> (tlist tint)) (fun f l ->
+    let g ix = match ix with (i, x) -> f i x
+    in let pair i x = (i, x)
+    in let first ix = match ix with (i, x) -> i
+    in map first (filter g (mapi pair l)));;
+let primitive_first = primitive "first" ((tlist t0) @> t0) (List.hd)
+let primitive_insert = primitive "insert" (t0 @> tint @> (tlist t0) @> (tlist t0)) (fun x i l ->
+    let rec take n = function
+        | [] -> []
+        | h :: t -> if n = 0 then [] else h :: take (n-1) t
+    in let rec drop n = function
+        | [] -> []
+        | h :: t as ll -> if n = 0 then ll else drop (n-1) t
+    in take i l :: [x] :: drop i l);;
+let primitive_is_even = primitive "is_even" (tint @> tboolean) (function
+    | n when n mod 2 = 0 -> true
+    | _ -> false);;
+let primitive_is_odd = primitive "is_even" (tint @> tboolean) (function
+    | n when n mod 2 = 0 -> false
+    | _ -> true);;
+let primitive_last = primitive "last" ((tlist t0) @> t0) (fun l -> List.hd (List.rev l))
+let primitive_max = primitive "max" ((tlist tint) @> tint) (fun l ->
+    let rec list_max = function
+        | [] -> raise (Err "Invalid input to max")
+        | h :: t -> max h (list_max t)
+    in list_max l);;
+let primitive_min = primitive "min" ((tlist tint) @> tint) (fun l ->
+    let rec list_min = function
+        | [] -> raise (Err "Invalid input to min")
+        | h :: t -> min h (list_min t)
+    in list_min l);;
+let primitive_nth = primitive "nth" ((tlist t0) @> t0) (fun n l -> List.nth l n);;
+let primitive_product = primitive "product" ((tlist tint) @> tint) (fun l -> List.fold_left ( * ) 1 l);;
+let primitive_rangestep = primitive "rangestep" (tint @> tint @> tint @> (tlist tint)) (fun start stop step ->
+let primitive_repeatlist = primitive "repeatlist" (t0 @> tint @> (tlist t0)) (fun x n ->
+    List.init n (fun i -> x));;
+let primitive_second = primitive "second" ((tlist t0) @> t0) (fun l -> List.hd (List.tl l));;
+
+let primitive_sum = primitive "sum" ((tlist tint) @> tint) (fun l -> List.fold_left ( + ) 0 l);;
+let primitive_swap = primitive "swap" ((tlist tint) @> tint) ();;
+
+let primitive_third = primitive "third" ((tlist t0) @> t0) (fun l -> List.hd (List.tl (List.tl l)));;
+
 
 ignore(primitive "take-word" (tcharacter @> tstring @> tstring) (fun c s ->
     List.take_while s ~f:(fun c' -> not (c = c'))));;
