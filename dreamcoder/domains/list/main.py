@@ -236,7 +236,9 @@ def list_options(parser):
         default="Lucas-old",
         choices=[
             "bootstrap",
-            "custom-harder",
+            "hard-list-all",
+            "hard-list-1",
+            "hard-list-3",
             "sorting",
             "Lucas-old",
             "Lucas-depth1",
@@ -276,7 +278,9 @@ def main(args):
         "Lucas-depth1": lambda: retrieveJSONTasks("data/list_tasks2.json")[:105],
         "Lucas-depth2": lambda: retrieveJSONTasks("data/list_tasks2.json")[:4928],
         "Lucas-depth3": lambda: retrieveJSONTasks("data/list_tasks2.json"),
-        "custom-harder": lambda: retrieveJSONTasks("data/custom_harder_tasks_joined.json"),
+        "hard-list-all": lambda: retrieveJSONTasks("data/hard_list_everything.json"),
+        "hard-list-1": lambda: retrieveJSONTasks("data/hard_list_wave1.json"),
+        "hard-list-3": lambda: retrieveJSONTasks("data/hard_list_wave3.json"),
     }[dataset]()
 
     maxTasks = args.pop("maxTasks")

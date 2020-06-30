@@ -192,7 +192,7 @@ def _appendmap(f): lambda xs: [y for x in xs for y in f(x)]
 
 def _filter(f): return lambda l: list(filter(f, l))
 
-def _filter1(f): return lambda l: [x for i, x in enumerate(L) if f(i)(x)]
+def _filter1(f): return lambda l: [x for i, x in enumerate(l) if f(i)(x)]
 
 
 def _any(f): return lambda l: any(f(x) for x in l)
@@ -526,8 +526,8 @@ def joshrule_dsl():
             Primitive("drop", arrow(tint, tlist(t0), tlist(t0)), _drop),
             Primitive("droplast", arrow(tint, tlist(t0), tlist(t0)), _droplast),
             Primitive("filter", arrow(arrow(t0, tbool), tlist(t0), tlist(t0)), _filter),
-            Primitive("filter1", arrow(arrow(int, t0, tbool), tlist(t0), tlist(t0)), _filter1),
-            Primitive("find", arrow(arrow(int, t0, tbool), tlist(t0), tlist(t0)), _findallindices),
+            Primitive("filter1", arrow(arrow(tint, t0, tbool), tlist(t0), tlist(t0)), _filter1),
+            Primitive("find", arrow(arrow(tint, t0, tbool), tlist(t0), tlist(t0)), _findallindices),
             Primitive("flatten", arrow(tlist(tlist(t0)), tlist(t0)), _flatten),
             Primitive("fold", arrow(arrow(t0, t1, t1), t1, tlist(t0), t1), _fold_joshrule),
             Primitive("foldi", arrow(arrow(tint, t0, t1, t1), t1, tlist(t0), t1), _foldi_joshrule),
