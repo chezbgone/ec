@@ -330,7 +330,7 @@ def _repeat_list(x): return lambda n: [x]*n
 def _unique(l): return [x for i, x in enumerate(l) if l.index(x) == i]
 
 
-def _zip(l): return lambda m: [[p] for p in zip(l, m)]
+def _zipp(l): return lambda m: [list(p) for p in zip(l, m)]
 
 
 
@@ -565,7 +565,7 @@ def joshrule_dsl():
             Primitive("takelast", arrow(tint, tlist(t0), t0), _takelast),
             Primitive("third", arrow(tlist(t0), t0), _index(2)),
             Primitive("unique", arrow(tlist(tint), tlist(tint)), _unique),
-            Primitive("zip", arrow(tlist(tint), tlist(tint), tlist(tlist(tint))), _zip),
+            Primitive("zip_plain", arrow(tlist(t0), tlist(t0), tlist(tlist(t0))), _zipp),
         ]
     
 

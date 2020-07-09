@@ -323,7 +323,7 @@ let [@warning "-20"] primitive ?manualLaziness:(manualLaziness = false)
   in
   let p = Primitive(t,name, ref (magical x)) in
   assert (not (Hashtbl.mem every_primitive name));
-  ignore(Hashtbl.add every_primitive name p);
+  ignore(Hashtbl.add every_primitive name p:unit);
   p
 
 (* let primitive_empty_string = primitive "emptyString" tstring "";; *)
@@ -551,15 +551,45 @@ let primitive_min = primitive "min" ((tlist tint) @> tint) (fun l ->
 let primitive_nth = primitive "nth" ((tlist t0) @> t0) (fun n l -> List.nth l n);;
 let primitive_product = primitive "product" ((tlist tint) @> tint) (fun l -> List.fold_left ( * ) 1 l);;
 let primitive_rangestep = primitive "rangestep" (tint @> tint @> tint @> (tlist tint)) (fun start stop step ->
+    let rec range start stop step = if (start < stop && step > 0) || (start > stop && step < 0)
+        then start :: range (start + step) stop step
+        else []
+    in range start stop step);;
 let primitive_repeatlist = primitive "repeatlist" (t0 @> tint @> (tlist t0)) (fun x n ->
     List.init n (fun i -> x));;
 let primitive_second = primitive "second" ((tlist t0) @> t0) (fun l -> List.hd (List.tl l));;
-
+let primitive_splice = primitive "splice" ((tlist t0) @> tint @> (tlist t0) @> t0) (fun l1 i l2 ->
+    let rec take n = function
+        | [] -> []
+        | h :: t -> if n = 0 then [] else h :: take (n-1) t
+    in let rec drop n = function
+        | [] -> []
+        | h :: t as ll -> if n = 0 then ll else drop (n-1) t
+    in take i l1 :: l2 :: drop i l1);;
 let primitive_sum = primitive "sum" ((tlist tint) @> tint) (fun l -> List.fold_left ( + ) 0 l);;
 let primitive_swap = primitive "swap" ((tlist tint) @> tint) ();;
-
+let primitive_take = primitive "take" (tint @> (tlist tint) @> tint) (fun n li ->
+    let rec take k = function
+        | [] -> []
+        | h :: t -> if k = 0 then [] else h :: take (k-1) t
+    in take n li);;
+let primitive_takelast = primitive "takelast" (tint @> (tlist tint) @> tint) (fun n li ->
+    let rec drop k = function
+        | [] -> []
+        | h :: t as ll -> if k = 0 then ll else drop (k-1) t
+    in drop (List.length li - n) li);;
 let primitive_third = primitive "third" ((tlist t0) @> t0) (fun l -> List.hd (List.tl (List.tl l)));;
-
+let primitive_unique = primitive "unique" ((tlist t0) @> t0) (fun l ->
+    let rec remove x = function
+        | [] -> []
+        | h :: t -> if h = x then remove t x else h :: remove t x
+    in let rec unique = function
+        | [] -> []
+        | h :: t -> h :: unique (remove h t)
+    in unique l);;
+let primitive_zip_plain = primitive "zip_plain" ((tlist t0) @> (tlist t0) @> (tlist (tlist t0))) (fun l m ->
+    let pair_to_list = fun p -> (match p with (f, s) -> [f; s])
+    in List.map pair_to_list (List.combine l m));;
 
 ignore(primitive "take-word" (tcharacter @> tstring @> tstring) (fun c s ->
     List.take_while s ~f:(fun c' -> not (c = c'))));;
